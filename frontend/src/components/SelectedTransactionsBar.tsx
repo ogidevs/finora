@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Check, ArrowDownLeft, ArrowUpRight, Scale, SlidersHorizontal } from 'lucide-react';
+import { X, Check, ArrowDownLeft, ArrowUpRight, Scale, SlidersHorizontal, Trash2 } from 'lucide-react';
 
 interface SelectedTransactionsBarProps {
   selectedCount: number;
@@ -10,6 +10,7 @@ interface SelectedTransactionsBarProps {
   formatPrimary: (val: number | string) => string;
   onClearSelection: () => void;
   onOpenMassEdit?: () => void;
+  onBatchDelete?: () => void;
 }
 
 export const SelectedTransactionsBar: React.FC<SelectedTransactionsBarProps> = ({
@@ -21,6 +22,7 @@ export const SelectedTransactionsBar: React.FC<SelectedTransactionsBarProps> = (
   formatPrimary,
   onClearSelection,
   onOpenMassEdit,
+  onBatchDelete,
 }) => {
   if (selectedCount === 0) return null;
 
@@ -100,6 +102,18 @@ export const SelectedTransactionsBar: React.FC<SelectedTransactionsBarProps> = (
             >
               <SlidersHorizontal className="w-3.5 h-3.5" />
               <span>Mass Edit</span>
+            </button>
+          )}
+
+          {onBatchDelete && (
+            <button
+              type="button"
+              onClick={onBatchDelete}
+              className="px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+              title="Delete selected transactions"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete</span>
             </button>
           )}
 

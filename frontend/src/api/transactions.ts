@@ -160,6 +160,20 @@ export async function batchUpdateTransactionsApi(
   return response.data;
 }
 
+export interface TransactionBatchDeleteResponse {
+  deleted_count: number;
+  message: string;
+}
+
+export async function batchDeleteTransactionsApi(
+  transactionIds: number[]
+): Promise<TransactionBatchDeleteResponse> {
+  const response = await apiClient.post<TransactionBatchDeleteResponse>('/transactions/batch-delete', {
+    transaction_ids: transactionIds,
+  });
+  return response.data;
+}
+
 export interface ImportTransactionsResponse {
   message: string;
   imported_count: number;
@@ -202,4 +216,3 @@ export async function clearAllTransactionsApi(): Promise<{ message: string }> {
   const response = await apiClient.delete<{ message: string }>('/transactions/clear');
   return response.data;
 }
-

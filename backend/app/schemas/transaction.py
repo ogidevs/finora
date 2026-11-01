@@ -68,6 +68,15 @@ class TransactionBatchUpdateResponse(BaseModel):
     message: str
 
 
+class TransactionBatchDelete(BaseModel):
+    transaction_ids: List[int] = Field(..., min_length=1)
+
+
+class TransactionBatchDeleteResponse(BaseModel):
+    deleted_count: int
+    message: str
+
+
 class TransactionOut(TransactionBase):
     id: int
     user_id: int

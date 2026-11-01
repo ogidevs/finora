@@ -5,6 +5,7 @@ import { listCategoriesApi, type Category } from './api/categories';
 import {
   listMonthlyTransactionsApi,
   deleteTransactionApi,
+  batchDeleteTransactionsApi,
   exportTransactionsApi,
   countTransactionsApi,
   isTransactionExpense,
@@ -365,9 +366,29 @@ export default function App() {
     if (!confirm('Are you sure you want to delete this transaction?')) return;
     try {
       await deleteTransactionApi(txId);
+      setSelectedTxIds((prev) => {
+        if (!prev.has(txId)) return prev;
+        const next = new Set(prev);
+        next.delete(txId);
+        return next;
+      });
       await Promise.all([loadTransactions(), loadMetadata()]);
     } catch (err) {
       console.error('Delete transaction failed:', err);
+    }
+  };
+
+  const handleBatchDeleteTransactions = async () => {
+    const ids = Array.from(selectedTxIds);
+    if (ids.length === 0) return;
+    const label = ids.length === 1 ? '1 selected transaction' : `${ids.length} selected transactions`;
+    if (!confirm(`Are you sure you want to delete ${label}?`)) return;
+    try {
+      await batchDeleteTransactionsApi(ids);
+      setSelectedTxIds(new Set());
+      await Promise.all([loadTransactions(), loadMetadata()]);
+    } catch (err) {
+      console.error('Batch delete transactions failed:', err);
     }
   };
 
@@ -577,6 +598,7 @@ export default function App() {
               onSelectTag={(tag) => setSelectedTag(tag ? tag : null)}
               selectedTag={selectedTag}
               onOpenMassEdit={() => setShowMassEditModal(true)}
+              onBatchDelete={handleBatchDeleteTransactions}
               onAddTransaction={() => {
                 setEditingTx(null);
                 setShowTxModal(true);
@@ -599,6 +621,7 @@ export default function App() {
               formatPrimary={formatPrimary}
               onClearSelection={handleClearSelection}
               onOpenMassEdit={() => setShowMassEditModal(true)}
+              onBatchDelete={handleBatchDeleteTransactions}
             />
           </div>
         )}

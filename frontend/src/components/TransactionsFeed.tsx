@@ -7,6 +7,7 @@ import {
   Square,
   X,
   SlidersHorizontal,
+  Trash2,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -52,6 +53,7 @@ interface TransactionsFeedProps {
   onSelectTag?: (tag: string) => void;
   selectedTag?: string | null;
   onOpenMassEdit?: () => void;
+  onBatchDelete?: () => void;
   onAddTransaction: () => void;
   onOpenImport?: () => void;
   /** Whether the user has any transactions at all (across every period). */
@@ -78,6 +80,7 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
   onSelectTag,
   selectedTag,
   onOpenMassEdit,
+  onBatchDelete,
   onAddTransaction,
   onOpenImport,
   hasAnyTransactions = true,
@@ -258,6 +261,17 @@ export const TransactionsFeed: React.FC<TransactionsFeedProps> = ({
             >
               <SlidersHorizontal className="w-3 h-3" />
               <span>Mass Edit ({selectedTxIds.size})</span>
+            </button>
+          )}
+
+          {selectedTxIds.size > 0 && onBatchDelete && (
+            <button
+              type="button"
+              onClick={onBatchDelete}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+            >
+              <Trash2 className="w-3 h-3" />
+              <span>Delete ({selectedTxIds.size})</span>
             </button>
           )}
         </div>

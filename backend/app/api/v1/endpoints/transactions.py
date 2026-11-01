@@ -20,6 +20,8 @@ from app.models.transaction import Transaction
 from app.schemas.transaction import (
     DailyTransactionsGroup,
     MonthlyTransactionsResponse,
+    TransactionBatchDelete,
+    TransactionBatchDeleteResponse,
     TransactionBatchUpdate,
     TransactionBatchUpdateResponse,
     TransactionCreate,
@@ -367,6 +369,47 @@ async def batch_update_transactions(
     return TransactionBatchUpdateResponse(
         updated_count=updated_count,
         message=f"Successfully updated {updated_count} transaction(s).",
+    )
+
+
+@router.post(
+    "/batch-delete",
+    response_model=TransactionBatchDeleteResponse,
+    summary="Batch delete multiple transactions",
+    description="Permanently deletes all selected transactions belonging to the authenticated user.",
+)
+@router.delete(
+    "/batch",
+    response_model=TransactionBatchDeleteResponse,
+    include_in_schema=False,
+)
+async def batch_delete_transactions(
+    batch_in: TransactionBatchDelete,
+    current_user: CurrentUserDep,
+    db: SessionDep,
+) -> TransactionBatchDeleteResponse:
+    if not batch_in.transaction_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No transaction IDs provided.",
+        )
+
+    res = await db.execute(
+        select(Transaction).where(
+            Transaction.id.in_(batch_in.transaction_ids),
+            Transaction.user_id == current_user.id,
+        )
+    )
+    tx_list = res.scalars().all()
+    deleted_count = len(tx_list)
+
+    for tx in tx_list:
+        await db.delete(tx)
+
+    await db.commit()
+    return TransactionBatchDeleteResponse(
+        deleted_count=deleted_count,
+        message=f"Successfully deleted {deleted_count} transaction(s).",
     )
 
 

@@ -474,6 +474,15 @@ def test_batch_update_transactions():
         assert utx["note"] == "Updated Batch Note"
         assert utx["tag"] == "massedited"
 
+    del_resp = authed.post("/api/transactions/batch-delete", json={
+        "transaction_ids": [tx1["id"], tx2["id"]],
+    })
+    assert del_resp.status_code == 200
+    assert del_resp.json()["deleted_count"] == 2
+
+    m_after_del = authed.get("/api/transactions/?month=10&year=2026").json()
+    assert m_after_del["transaction_count"] == 0
+
 
 def test_transactions_export_and_import():
     unique_id = uuid.uuid4().hex[:8]
