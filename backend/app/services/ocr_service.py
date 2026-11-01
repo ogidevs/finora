@@ -8,13 +8,23 @@ logger = logging.getLogger("ocr_service")
 _ocr_instance: Optional[PaddleOCR] = None
 
 
-def get_ocr_engine() -> PaddleOCR:
+def get_ocr_engine(force_cpu: bool = False) -> PaddleOCR:
     """
     Returns a singleton PaddleOCR engine instance.
     Automatically enables GPU acceleration when PaddlePaddle has CUDA support and a GPU is present,
     falling back gracefully to CPU otherwise.
     """
     global _ocr_instance
+    if force_cpu:
+        logger.info("Initializing PaddleOCR on CPU (fallback)...")
+        _ocr_instance = PaddleOCR(
+            use_angle_cls=True,
+            lang="en",
+            use_gpu=False,
+            show_log=False,
+        )
+        return _ocr_instance
+
     if _ocr_instance is None:
         use_gpu = False
         try:
@@ -122,7 +132,14 @@ def extract_text_from_receipt(image_path: str) -> List[str]:
     processed_img = preprocess_receipt_image(raw_img)
 
     ocr = get_ocr_engine()
-    results = ocr.ocr(processed_img, cls=True)
+    try:
+        results = ocr.ocr(processed_img, cls=True)
+    except Exception as exc:
+        logger.warning(
+            f"PaddleOCR inference failed ({exc}); falling back to CPU engine..."
+        )
+        ocr = get_ocr_engine(force_cpu=True)
+        results = ocr.ocr(processed_img, cls=True)
 
     extracted_lines: List[str] = []
     if results and len(results) > 0 and results[0]:

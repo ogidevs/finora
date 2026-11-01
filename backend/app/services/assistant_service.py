@@ -95,8 +95,12 @@ async def calculate_financial_facts(
             to_acc_type = tx.to_account.type if tx.to_account else None
 
             if tx.type == TransactionType.INCOME:
+                if acc_type == AccountType.SAVINGS:
+                    continue
                 inc += amt
             elif tx.type == TransactionType.EXPENSE:
+                if acc_type == AccountType.SAVINGS:
+                    continue
                 exp += amt
                 cat_name = (
                     tx.category.parent.name
@@ -280,7 +284,7 @@ async def _call_ollama(prompt: str, system_prompt: str) -> Optional[str]:
         },
     }
     try:
-        async with httpx.AsyncClient(timeout=45.0) as client:
+        async with httpx.AsyncClient(timeout=float(settings.OLLAMA_TIMEOUT_SECONDS)) as client:
             resp = await client.post(url, json=payload)
             if resp.status_code == 200:
                 data = resp.json()

@@ -10,7 +10,7 @@ connect_args = {}
 
 engine = create_async_engine(
     settings.async_database_url,
-    echo=settings.DEBUG,
+    echo=settings.DB_ECHO,
     future=True,
     connect_args=connect_args,
 )

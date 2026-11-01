@@ -89,9 +89,9 @@ def resolve_cashflow_kind(
     to_acc_type: Optional[str],
 ) -> Optional[TransactionType]:
     if tx_type == TransactionType.INCOME:
-        return TransactionType.INCOME
+        return None if acc_type == AccountType.SAVINGS else TransactionType.INCOME
     if tx_type == TransactionType.EXPENSE:
-        return TransactionType.EXPENSE
+        return None if acc_type == AccountType.SAVINGS else TransactionType.EXPENSE
 
     is_savings, direction = classify_savings_transfer(tx_type, acc_type, to_acc_type)
     if is_savings:

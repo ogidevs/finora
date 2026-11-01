@@ -2,7 +2,7 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, Callable, Dict, Set
+from typing import Any, Callable, Set
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -20,13 +20,6 @@ SENSITIVE_KEYS: Set[str] = {
     "old_password",
     "new_password",
     "client_secret",
-}
-
-SENSITIVE_HEADERS: Set[str] = {
-    "authorization",
-    "cookie",
-    "set-cookie",
-    "x-api-key",
 }
 
 
@@ -86,13 +79,6 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
         query_string = request.url.query
         full_path = f"{url_path}?{query_string}" if query_string else url_path
 
-        # Capture request headers (filtering sensitive headers)
-        filtered_headers: Dict[str, str] = {
-            k: ("***" if k.lower() in SENSITIVE_HEADERS else v)
-            for k, v in request.headers.items()
-        }
-
-        # Capture request body safely
         content_type = request.headers.get("content-type", "")
         req_body_bytes = b""
         if method in ("POST", "PUT", "PATCH", "DELETE"):
@@ -113,7 +99,6 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
         if formatted_req_body not in ("(none)", "(empty)"):
             logger.info(f"[{request_id}] Request Body: {formatted_req_body}")
 
-        # Execute the request pipeline
         try:
             response = await call_next(request)
         except Exception as exc:
@@ -127,15 +112,22 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
         duration_ms = (time.perf_counter() - start_time) * 1000
         status_code = response.status_code
         resp_content_type = response.headers.get("content-type", "")
+        is_attachment = "attachment" in response.headers.get("content-disposition", "").lower()
 
-        # Read response body while preserving it for the client
+        if url_path.startswith("/uploads") or is_attachment:
+            response.headers["X-Request-ID"] = request_id
+            response.headers["X-Process-Time"] = f"{duration_ms:.2f}ms"
+            logger.info(
+                f"[{request_id}] <--- {status_code} in {duration_ms:.2f}ms | {method} {full_path} | Content-Type: {resp_content_type or 'none'}"
+            )
+            return response
+
         resp_body_bytes = b""
         async for chunk in response.body_iterator:
             resp_body_bytes += chunk
 
         formatted_resp_body = format_body_for_logging(resp_body_bytes, resp_content_type)
 
-        # Log at appropriate severity
         log_msg = (
             f"[{request_id}] <--- {status_code} in {duration_ms:.2f}ms | {method} {full_path} | Content-Type: {resp_content_type or 'none'}"
         )
@@ -152,18 +144,22 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
             else:
                 logger.info(f"[{request_id}] Response Body: {formatted_resp_body}")
 
-        # Attach tracing headers to the response
-        resp_headers = dict(response.headers)
-        resp_headers["X-Request-ID"] = request_id
-        resp_headers["X-Process-Time"] = f"{duration_ms:.2f}ms"
-
-        return Response(
+        new_response = Response(
             content=resp_body_bytes,
             status_code=status_code,
-            headers=resp_headers,
             media_type=response.media_type,
             background=response.background,
         )
+        new_response.raw_headers = [
+            (k, v)
+            for k, v in response.raw_headers
+            if k.lower() != b"content-length"
+        ]
+        new_response.headers["content-length"] = str(len(resp_body_bytes))
+        new_response.headers["X-Request-ID"] = request_id
+        new_response.headers["X-Process-Time"] = f"{duration_ms:.2f}ms"
+
+        return new_response
 
 
 def setup_logging():

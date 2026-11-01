@@ -66,7 +66,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   onSuccess,
   onOpenSettings,
 }) => {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -362,7 +363,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
             <input
               type="number"
-              step="0.1"
+              step="0.01"
               required
               placeholder="0.00"
               value={amount}

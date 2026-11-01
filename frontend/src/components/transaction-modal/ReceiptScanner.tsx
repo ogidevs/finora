@@ -25,25 +25,27 @@ export const ReceiptScanner: React.FC<ReceiptScannerProps> = ({
 
   return (
     <>
-      <div className="shrink-0">
-        <input
-          type="file"
-          ref={fileInputRef}
-          accept="image/*"
-          onChange={handleReceiptFileChange}
-          className="hidden"
-        />
-        <button
-          type="button"
-          disabled={scanning}
-          onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 cursor-pointer"
-          title="Scan Receipt"
-        >
-          <Camera className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Scan Receipt</span>
-        </button>
-      </div>
+      {!scanning && (
+        <div className="shrink-0">
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            onChange={handleReceiptFileChange}
+            className="hidden"
+          />
+          <button
+            type="button"
+            disabled={scanning}
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 cursor-pointer"
+            title="Scan Receipt"
+          >
+            <Camera className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Scan Receipt</span>
+          </button>
+        </div>
+      )}
 
       {scanning && (
         <div className="mb-4 px-3.5 py-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center gap-2.5 text-indigo-300 text-xs">

@@ -88,9 +88,10 @@ export const MassEditModal: React.FC<MassEditModalProps> = ({
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState<number | ''>('');
 
   const [updateDate, setUpdateDate] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  });
 
   const [updateNote, setUpdateNote] = useState(false);
   const [clearNote, setClearNote] = useState(false);

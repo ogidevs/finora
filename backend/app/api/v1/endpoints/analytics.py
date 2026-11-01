@@ -2,9 +2,9 @@ import calendar
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from fastapi import APIRouter, Query
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUserDep, SessionDep
@@ -21,15 +21,14 @@ from app.schemas.analytics import (
     ForecastResponse,
 )
 from app.services.forecasting import calculate_time_series_forecast
-
 from app.services.currency_service import (
-    base_to_primary,
     from_base_currency,
     to_primary_currency,
 )
 from app.services.ledger_service import (
     calculate_account_balance_base,
     get_monthly_expense_series,
+    resolve_cashflow_kind,
 )
 
 router = APIRouter()
@@ -106,37 +105,20 @@ async def get_analytics_summary(
         acc_type = tx.account.type if tx.account else AccountType.SPENDING
         to_acc_type = tx.to_account.type if tx.to_account else None
 
-        eff_type = None
-        is_savings_transfer = False
-
-        if tx.type == TransactionType.TRANSFER:
-            if acc_type != AccountType.SAVINGS and to_acc_type == AccountType.SAVINGS:
-                eff_type = TransactionType.EXPENSE
-                is_savings_transfer = True
-            elif acc_type == AccountType.SAVINGS and to_acc_type != AccountType.SAVINGS:
-                eff_type = TransactionType.INCOME
-                is_savings_transfer = True
-            else:
-                continue
-        elif tx.type == TransactionType.INCOME:
-            if acc_type == AccountType.SAVINGS:
-                continue
-            eff_type = TransactionType.INCOME
-        elif tx.type == TransactionType.EXPENSE:
-            if acc_type == AccountType.SAVINGS:
-                continue
-            eff_type = TransactionType.EXPENSE
-        else:
+        eff_type = resolve_cashflow_kind(tx.type, acc_type, to_acc_type)
+        if eff_type is None:
             continue
 
+        is_savings_transfer = tx.type == TransactionType.TRANSFER
+
         tx_primary = to_primary_currency(tx.amount, tx.currency, primary_cur, tx.exchange_rate, rate)
-        if eff_type == "EXPENSE":
+        if eff_type == TransactionType.EXPENSE:
             total_expense_primary += tx_primary
         else:
             total_income_primary += tx_primary
 
         if is_savings_transfer:
-            if eff_type == "EXPENSE":
+            if eff_type == TransactionType.EXPENSE:
                 parent_id = -100
                 parent_name = "Savings & Investments"
                 parent_type = "EXPENSE"
@@ -299,29 +281,13 @@ async def get_analytics_trends(
         acc_type = tx.account.type if tx.account else AccountType.SPENDING
         to_acc_type = tx.to_account.type if tx.to_account else None
 
-        eff_type = None
-
-        if tx.type == TransactionType.TRANSFER:
-            if acc_type != AccountType.SAVINGS and to_acc_type == AccountType.SAVINGS:
-                eff_type = TransactionType.EXPENSE
-            elif acc_type == AccountType.SAVINGS and to_acc_type != AccountType.SAVINGS:
-                eff_type = TransactionType.INCOME
-            else:
-                continue
-        elif tx.type == TransactionType.INCOME:
-            if acc_type == AccountType.SAVINGS:
-                continue
-            eff_type = TransactionType.INCOME
-        elif tx.type == TransactionType.EXPENSE:
-            if acc_type == AccountType.SAVINGS:
-                continue
-            eff_type = TransactionType.EXPENSE
-        else:
+        eff_type = resolve_cashflow_kind(tx.type, acc_type, to_acc_type)
+        if eff_type is None:
             continue
 
         tx_primary = to_primary_currency(tx.amount, tx.currency, primary_cur, tx.exchange_rate, rate)
         key = (tx.date.year, tx.date.month)
-        if eff_type == "EXPENSE":
+        if eff_type == TransactionType.EXPENSE:
             monthly_map[key]["expense"] += tx_primary
         else:
             monthly_map[key]["income"] += tx_primary
@@ -390,58 +356,8 @@ async def get_analytics_forecast(
     current_user: CurrentUserDep,
     db: SessionDep,
 ) -> ForecastResponse:
-    primary_cur = current_user.primary_currency
-    rate = current_user.exchange_rate
-
-    query = (
-        select(Transaction)
-        .options(
-            selectinload(Transaction.account),
-            selectinload(Transaction.to_account),
-        )
-        .where(Transaction.user_id == current_user.id)
-        .order_by(Transaction.date.asc())
-    )
-    transactions = (await db.execute(query)).scalars().all()
-
-    monthly_expense_map = defaultdict(lambda: Decimal("0.00"))
-
-    for tx in transactions:
-        acc_type = tx.account.type if tx.account else AccountType.SPENDING
-        to_acc_type = tx.to_account.type if tx.to_account else None
-
-        eff_type = None
-
-        if tx.type == TransactionType.TRANSFER:
-            if acc_type != AccountType.SAVINGS and to_acc_type == AccountType.SAVINGS:
-                eff_type = TransactionType.EXPENSE
-            else:
-                continue
-        elif tx.type == TransactionType.EXPENSE:
-            if acc_type == AccountType.SAVINGS:
-                continue
-            eff_type = TransactionType.EXPENSE
-        else:
-            continue
-
-        if eff_type == "EXPENSE":
-            tx_primary = to_primary_currency(tx.amount, tx.currency, primary_cur, tx.exchange_rate, rate)
-            key = (tx.date.year, tx.date.month)
-            monthly_expense_map[key] += tx_primary
-
-    sorted_keys = sorted(monthly_expense_map.keys())
-    monthly_data: List[Dict[str, Any]] = []
-
-    for (yr, mo) in sorted_keys:
-        d = date(yr, mo, 1)
-        label = f"{calendar.month_abbr[mo]} {yr}"
-        monthly_data.append({
-            "date": d,
-            "month_label": label,
-            "amount": float(monthly_expense_map[(yr, mo)]),
-        })
-
+    monthly_data = await get_monthly_expense_series(db, current_user)
     return await calculate_time_series_forecast(
         monthly_data=monthly_data,
-        primary_currency=primary_cur,
+        primary_currency=current_user.primary_currency,
     )

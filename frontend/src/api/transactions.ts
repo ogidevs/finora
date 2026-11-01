@@ -44,11 +44,13 @@ export function isSavingsTransferFrom(tx: Transaction): boolean {
 }
 
 export function isTransactionExpense(tx: Transaction): boolean {
-  return tx.type === 'EXPENSE' || isSavingsTransferTo(tx);
+  const isDirectSavingsTx = tx.account_type === 'SAVINGS' || tx.account_type === 'SAVING';
+  return (tx.type === 'EXPENSE' && !isDirectSavingsTx) || isSavingsTransferTo(tx);
 }
 
 export function isTransactionIncome(tx: Transaction): boolean {
-  return tx.type === 'INCOME' || isSavingsTransferFrom(tx);
+  const isDirectSavingsTx = tx.account_type === 'SAVINGS' || tx.account_type === 'SAVING';
+  return (tx.type === 'INCOME' && !isDirectSavingsTx) || isSavingsTransferFrom(tx);
 }
 
 export function getTransactionPrimaryAmount(tx: Transaction, primaryCurrency: string): number {
