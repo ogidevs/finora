@@ -127,8 +127,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      ollama:
-        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/ping || exit 1"]
       interval: 15s
@@ -146,9 +144,6 @@ services:
       API_PROXY_TARGET: http://backend:8000
     ports:
       - "5173:80"
-    depends_on:
-      backend:
-        condition: service_healthy
 
 volumes:
   postgres_data:
