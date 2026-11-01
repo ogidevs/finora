@@ -122,7 +122,9 @@ export const CurrencyTab: React.FC<CurrencyTabProps> = ({
   const isValidRate = !isNaN(parsedRate) && parsedRate > 0;
 
   let calculatedBaseRate = 1.0;
-  if (isValidRate) {
+  if (targetCurrency.toUpperCase() === 'EUR') {
+    calculatedBaseRate = 1.0;
+  } else if (isValidRate) {
     if (quoteMode === 'from_per_to') {
       calculatedBaseRate = fromBaseRate / parsedRate;
     } else {
@@ -145,7 +147,8 @@ export const CurrencyTab: React.FC<CurrencyTabProps> = ({
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!targetCurrency || targetCurrency === primaryCurrency || !isValidRate) return;
-    await onConfirmChange(targetCurrency, Number(calculatedBaseRate.toFixed(4)));
+    const finalRate = targetCurrency.toUpperCase() === 'EUR' ? 1.0 : Number(calculatedBaseRate.toFixed(4));
+    await onConfirmChange(targetCurrency, finalRate);
     setIsChanging(false);
   };
 

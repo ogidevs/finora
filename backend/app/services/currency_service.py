@@ -93,9 +93,12 @@ def get_default_rate(code: str) -> Decimal:
 
 
 def resolve_rate(code: str, custom_rate: Optional[Decimal] = None) -> Decimal:
+    upper_code = (code or "").upper().strip()
+    if upper_code == "EUR":
+        return Decimal("1.0000")
     if custom_rate is not None and custom_rate > 0:
         return custom_rate
-    return get_default_rate(code)
+    return get_default_rate(upper_code)
 
 
 def convert_currency(

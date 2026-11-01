@@ -43,11 +43,16 @@ async def update_settings(
     if settings_in.primary_currency is not None:
         code = settings_in.primary_currency.upper().strip()
         current_user.primary_currency = code
-        if settings_in.exchange_rate is None:
+        if code == "EUR":
+            current_user.exchange_rate = Decimal("1.0000")
+        elif settings_in.exchange_rate is None:
             current_user.exchange_rate = get_default_rate(code)
 
     if settings_in.exchange_rate is not None:
-        current_user.exchange_rate = settings_in.exchange_rate
+        if current_user.primary_currency == "EUR":
+            current_user.exchange_rate = Decimal("1.0000")
+        else:
+            current_user.exchange_rate = settings_in.exchange_rate
 
     db.add(current_user)
     await db.commit()

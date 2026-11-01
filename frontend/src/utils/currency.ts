@@ -67,8 +67,8 @@ export function convertCurrency(
     return amount;
   }
 
-  const rFrom = fromRate && fromRate > 0 ? fromRate : getDefaultRate(fromUpper);
-  const rTo = toRate && toRate > 0 ? toRate : getDefaultRate(toUpper);
+  const rFrom = fromUpper === 'EUR' ? 1.0 : (fromRate && fromRate > 0 ? fromRate : getDefaultRate(fromUpper));
+  const rTo = toUpper === 'EUR' ? 1.0 : (toRate && toRate > 0 ? toRate : getDefaultRate(toUpper));
 
   if (rFrom <= 0) {
     return amount;
