@@ -163,10 +163,15 @@ class RequestResponseLoggingMiddleware(BaseHTTPMiddleware):
 
 
 def setup_logging():
-    """Configures structured console logging if not already configured."""
+    """Configures structured console logging."""
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
+        force=True,
     )
+    logging.getLogger().setLevel(logging.INFO)
+    logging.getLogger("ocr_service").setLevel(logging.INFO)
+    logging.getLogger("receipt_preprocessor").setLevel(logging.INFO)
+    logging.getLogger("receipt_parser").setLevel(logging.INFO)
     logger.setLevel(logging.INFO)

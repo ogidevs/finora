@@ -71,10 +71,7 @@ async def calculate_time_series_forecast(
     prophet_result: Optional[ForecastModelResult] = None
 
     try:
-        import logging
         from prophet import Prophet
-
-        logging.getLogger("cmdstanpy").setLevel(logging.WARNING)
 
         m = Prophet(
             interval_width=0.80,
