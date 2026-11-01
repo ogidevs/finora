@@ -1,0 +1,157 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: finance_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: finance_tracker
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d finance_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: finance_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_SERVER_JSON_FILE: /tmp/servers.json
+    ports:
+      - "5050:80"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        printf "postgres:5432:*:postgres:postgres\n" > /tmp/pgpassfile
+        chmod 600 /tmp/pgpassfile
+        cat << 'EOF' > /tmp/servers.json
+        {
+          "Servers": {
+            "1": {
+              "Name": "Finora PostgreSQL (finance_tracker)",
+              "Group": "Servers",
+              "Host": "postgres",
+              "Port": 5432,
+              "MaintenanceDB": "finance_tracker",
+              "Username": "postgres",
+              "SSLMode": "prefer",
+              "PassFile": "/tmp/pgpassfile"
+            }
+          }
+        }
+        EOF
+        if [ -f /var/lib/pgadmin/pgadmin4.db ]; then
+          /venv/bin/python3 /pgadmin4/setup.py load-servers /tmp/servers.json --user admin@admin.com --replace || true
+        fi
+        exec /entrypoint.sh
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: finance_ollama
+    restart: unless-stopped
+    environment:
+      OLLAMA_MODEL: llama3:8b
+      OLLAMA_KEEP_ALIVE: 24h
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        /bin/ollama serve &
+        pid=$$!
+        until /bin/ollama list >/dev/null 2>&1; do
+          sleep 1
+        done
+        echo "Ensuring Ollama model $${OLLAMA_MODEL:-llama3:8b} is pulled..."
+        /bin/ollama pull $${OLLAMA_MODEL:-llama3:8b}
+        wait $$pid
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: finance_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/finance_tracker
+      POSTGRES_SERVER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: finance_tracker
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: llama3:8b
+      OLLAMA_TIMEOUT_SECONDS: 45.0
+      BACKEND_CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173","http://frontend","http://frontend:80"]'
+    ports:
+      - "8000:8000"
+    volumes:
+      - paddleocr_cache:/home/appuser/.paddleocr
+      - receipt_uploads:/app/uploads
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/ping || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: finance_frontend
+    restart: unless-stopped
+    environment:
+      API_PROXY_TARGET: http://backend:8000
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  ollama_data:
+  paddleocr_cache:
+  receipt_uploads:
