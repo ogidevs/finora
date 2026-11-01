@@ -3,7 +3,6 @@ from app.models.user import User
 from app.models.account import Account
 from app.models.category import Category
 from app.models.transaction import Transaction
-from app.models.receipt import Receipt
 from app.models.enums import (
     AccountType,
     TransactionType,
@@ -20,7 +19,6 @@ __all__ = [
     "Account",
     "Category",
     "Transaction",
-    "Receipt",
     "AccountType",
     "TransactionType",
     "CategoryType",

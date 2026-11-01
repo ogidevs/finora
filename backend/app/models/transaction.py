@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from app.models.user import User
     from app.models.account import Account
     from app.models.category import Category
-    from app.models.receipt import Receipt
 
 
 class Transaction(Base):
@@ -39,12 +38,6 @@ class Transaction(Base):
     account: Mapped["Account"] = relationship("Account", foreign_keys=[account_id], back_populates="transactions")
     to_account: Mapped[Optional["Account"]] = relationship("Account", foreign_keys=[to_account_id])
     category: Mapped[Optional["Category"]] = relationship("Category", back_populates="transactions")
-    receipt: Mapped[Optional["Receipt"]] = relationship(
-        "Receipt",
-        back_populates="transaction",
-        uselist=False,
-        cascade="all, delete-orphan"
-    )
 
     def __repr__(self) -> str:
         return f"<Transaction(id={self.id}, type='{self.type}', amount={self.amount} {self.currency}, date={self.date})>"

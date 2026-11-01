@@ -178,34 +178,9 @@ def upgrade() -> None:
         if 'secondary_currency' in tx_cols:
             op.drop_column('transactions', 'secondary_currency')
 
-    # 5. Receipts table
-    if 'receipts' not in existing_tables:
-        op.create_table(
-            'receipts',
-            sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column('transaction_id', sa.Integer(), nullable=True),
-            sa.Column('image_path', sa.String(length=500), nullable=False),
-            sa.Column('ocr_raw_text', sa.Text(), nullable=True),
-            sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-            sa.ForeignKeyConstraint(['transaction_id'], ['transactions.id'], ondelete='SET NULL'),
-            sa.PrimaryKeyConstraint('id'),
-            sa.UniqueConstraint('transaction_id'),
-        )
-        op.create_index(op.f('ix_receipts_id'), 'receipts', ['id'], unique=False)
-    else:
-        rec_cols = {c['name']: c for c in inspector.get_columns('receipts')}
-        if 'transaction_id' not in rec_cols:
-            op.add_column('receipts', sa.Column('transaction_id', sa.Integer(), nullable=True))
-        if 'image_path' not in rec_cols:
-            op.add_column('receipts', sa.Column('image_path', sa.String(length=500), server_default='', nullable=False))
-        if 'ocr_raw_text' not in rec_cols:
-            op.add_column('receipts', sa.Column('ocr_raw_text', sa.Text(), nullable=True))
-
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_index(op.f('ix_receipts_id'), table_name='receipts')
-    op.drop_table('receipts')
     op.drop_index(op.f('ix_transactions_user_id'), table_name='transactions')
     op.drop_index(op.f('ix_transactions_to_account_id'), table_name='transactions')
     op.drop_index(op.f('ix_transactions_tag'), table_name='transactions')
