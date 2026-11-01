@@ -4,9 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.api.v1.router import api_router
+from app.core.logging_middleware import RequestResponseLoggingMiddleware, setup_logging
 
 
 def create_application() -> FastAPI:
+    setup_logging()
+
     application = FastAPI(
         title=settings.PROJECT_NAME,
         description=settings.PROJECT_DESCRIPTION,
@@ -24,6 +27,8 @@ def create_application() -> FastAPI:
             allow_methods=["*"],
             allow_headers=["*"],
         )
+
+    application.add_middleware(RequestResponseLoggingMiddleware)
 
     uploads_path = Path("uploads/receipts")
     uploads_path.mkdir(parents=True, exist_ok=True)
