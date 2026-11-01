@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     # Project metadata
     PROJECT_NAME: str = "Personal Finance Management API"
+    PROJECT_DESCRIPTION: str = "Intelligent Personal Finance Management System with OCR, Time-Series Forecasting, and Local LLM Advisory"
     VERSION: str = "0.1.0"
     API_V1_STR: str = "/api"
     ENVIRONMENT: str = "development"

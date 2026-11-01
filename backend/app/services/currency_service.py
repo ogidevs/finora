@@ -155,3 +155,8 @@ def from_base_currency(
 ) -> Decimal:
     rate_val = resolve_rate(target_currency, exchange_rate)
     return round(amount_base * rate_val, 2)
+
+
+primary_to_base = to_base_currency
+base_to_primary = from_base_currency
+

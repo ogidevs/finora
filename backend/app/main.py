@@ -31,6 +31,14 @@ def create_application() -> FastAPI:
 
     application.include_router(api_router, prefix=settings.API_V1_STR)
 
+    @application.get("/", tags=["Root"])
+    async def root():
+        return {
+            "message": f"Welcome to {settings.PROJECT_NAME}",
+            "version": settings.VERSION,
+            "docs": "/docs",
+        }
+
     return application
 
 

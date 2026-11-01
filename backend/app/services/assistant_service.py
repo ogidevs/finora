@@ -328,7 +328,7 @@ def _format_facts_context(facts: FinancialFacts) -> str:
     )
 
 
-async def generate_assistant_insights(
+async def get_assistant_insights(
     db: AsyncSession,
     user: User,
     month: Optional[int] = None,
@@ -361,7 +361,7 @@ async def generate_assistant_insights(
     return AssistantInsightResponse(
         facts=facts,
         summary=fallback_summary,
-        provider="rule_based_fallback",
+        provider="fallback",
         model="deterministic-engine-v1",
         recommendations=fallback_recs,
     )
@@ -400,6 +400,10 @@ async def chat_with_assistant(
     )
     return AssistantChatResponse(
         reply=fallback_reply,
-        provider="rule_based_fallback",
+        provider="fallback",
         model="deterministic-engine-v1",
     )
+
+
+generate_assistant_insights = get_assistant_insights
+

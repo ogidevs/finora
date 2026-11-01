@@ -24,7 +24,12 @@ from app.services.forecasting import calculate_time_series_forecast
 
 from app.services.currency_service import (
     base_to_primary,
+    from_base_currency,
     to_primary_currency,
+)
+from app.services.ledger_service import (
+    calculate_account_balance_base,
+    get_monthly_expense_series,
 )
 
 router = APIRouter()
@@ -124,7 +129,7 @@ async def get_analytics_summary(
         else:
             continue
 
-        tx_primary = to_primary_currency(tx.amount, tx.currency, primary_cur, tx.exchange_rate or rate)
+        tx_primary = to_primary_currency(tx.amount, tx.currency, primary_cur, tx.exchange_rate, rate)
         if eff_type == "EXPENSE":
             total_expense_primary += tx_primary
         else:
@@ -200,36 +205,8 @@ async def get_analytics_summary(
     total_savings_primary = Decimal("0.00")
 
     for s_acc in savings_accs:
-        inc_q = select(func.coalesce(func.sum(Transaction.amount_base), Decimal("0.00"))).where(
-            Transaction.user_id == current_user.id,
-            Transaction.account_id == s_acc.id,
-            Transaction.type == "INCOME",
-        )
-        inc_b = (await db.execute(inc_q)).scalar() or Decimal("0.00")
-
-        exp_q = select(func.coalesce(func.sum(Transaction.amount_base), Decimal("0.00"))).where(
-            Transaction.user_id == current_user.id,
-            Transaction.account_id == s_acc.id,
-            Transaction.type == "EXPENSE",
-        )
-        exp_b = (await db.execute(exp_q)).scalar() or Decimal("0.00")
-
-        out_q = select(func.coalesce(func.sum(Transaction.amount_base), Decimal("0.00"))).where(
-            Transaction.user_id == current_user.id,
-            Transaction.account_id == s_acc.id,
-            Transaction.type == "TRANSFER",
-        )
-        out_b = (await db.execute(out_q)).scalar() or Decimal("0.00")
-
-        in_q = select(func.coalesce(func.sum(Transaction.amount_base), Decimal("0.00"))).where(
-            Transaction.user_id == current_user.id,
-            Transaction.to_account_id == s_acc.id,
-            Transaction.type == "TRANSFER",
-        )
-        in_b = (await db.execute(in_q)).scalar() or Decimal("0.00")
-
-        bal_base = s_acc.initial_balance + inc_b - exp_b - out_b + in_b
-        total_savings_primary += base_to_primary(bal_base, primary_cur, rate)
+        bal_base = await calculate_account_balance_base(db, current_user.id, s_acc)
+        total_savings_primary += from_base_currency(bal_base, primary_cur, rate)
 
     stat_items = []
     for p_id, b in cat_buckets.items():
@@ -269,6 +246,12 @@ async def get_analytics_summary(
 
     stat_items.sort(key=lambda x: x.total_amount_primary, reverse=True)
 
+    savings_rate_val = (
+        round(float((net_difference_primary / total_income_primary) * 100), 1)
+        if total_income_primary > 0
+        else 0.0
+    )
+
     return CategoryAnalyticsResponse(
         period=period,
         day=target_day,
@@ -281,7 +264,7 @@ async def get_analytics_summary(
         net_difference_primary=net_difference_primary,
         total_savings_primary=total_savings_primary,
         net_savings_primary=net_difference_primary,
-        savings_rate=0.0,
+        savings_rate=savings_rate_val,
         categories=stat_items,
     )
 
@@ -336,7 +319,7 @@ async def get_analytics_trends(
         else:
             continue
 
-        tx_primary = to_primary_currency(tx.amount, tx.currency, primary_cur, tx.exchange_rate or rate)
+        tx_primary = to_primary_currency(tx.amount, tx.currency, primary_cur, tx.exchange_rate, rate)
         key = (tx.date.year, tx.date.month)
         if eff_type == "EXPENSE":
             monthly_map[key]["expense"] += tx_primary
@@ -442,7 +425,7 @@ async def get_analytics_forecast(
             continue
 
         if eff_type == "EXPENSE":
-            tx_primary = to_primary_currency(tx.amount, tx.currency, primary_cur, tx.exchange_rate or rate)
+            tx_primary = to_primary_currency(tx.amount, tx.currency, primary_cur, tx.exchange_rate, rate)
             key = (tx.date.year, tx.date.month)
             monthly_expense_map[key] += tx_primary
 
