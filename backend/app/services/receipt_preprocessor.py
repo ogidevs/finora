@@ -44,4 +44,13 @@ def preprocess_receipt_image(image_input) -> np.ndarray:
         new_h = int(h * scale)
         img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
 
+    img = cv2.bilateralFilter(img, d=5, sigmaColor=50, sigmaSpace=50)
+
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    l_channel, a_channel, b_channel = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced_l = clahe.apply(l_channel)
+    enhanced_lab = cv2.merge([enhanced_l, a_channel, b_channel])
+    img = cv2.cvtColor(enhanced_lab, cv2.COLOR_LAB2BGR)
+
     return img
