@@ -16,18 +16,12 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     API_V1_STR: str = "/api"
     ENVIRONMENT: str = "development"
-    DEBUG: bool = True
 
     # Security / Auth settings
     SECRET_KEY: str = "change-this-in-production-super-secret-key-32chars"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     ALGORITHM: str = "HS256"
-
-    # Cookie Settings
-    COOKIE_SECURE: bool = False
-    COOKIE_SAMESITE: str = "lax"
-    COOKIE_DOMAIN: Optional[str] = None
 
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
